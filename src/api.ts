@@ -1,3 +1,9 @@
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
+function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
 export type TargetField =
   | 'ignore'
   | 'id'
@@ -74,6 +80,7 @@ export interface ApiError {
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get('content-type') ?? '';
+
   const body = contentType.includes('json')
     ? ((await response.json()) as ApiError & T)
     : undefined;
@@ -82,25 +89,46 @@ async function parseResponse<T>(response: Response): Promise<T> {
     const validationMessages = body?.errors
       ? Object.values(body.errors).flat().join(' ')
       : '';
-    const message = body?.message || validationMessages || body?.title || `Request failed (${response.status}).`;
+
+    const message =
+      body?.message ||
+      validationMessages ||
+      body?.title ||
+      `Request failed (${response.status}).`;
+
     throw new Error(message);
   }
 
   return body as T;
 }
 
-export async function uploadImport(file: File, worksheet: string, mappingProfileId: string): Promise<ImportDetails> {
+export async function uploadImport(
+  file: File,
+  worksheet: string,
+  mappingProfileId: string,
+): Promise<ImportDetails> {
   const form = new FormData();
-  form.append('file', file);
-  if (worksheet.trim()) form.append('worksheet', worksheet.trim());
-  if (mappingProfileId) form.append('mappingProfileId', mappingProfileId);
 
-  const response = await fetch('/api/imports', { method: 'POST', body: form });
+  form.append('file', file);
+
+  if (worksheet.trim()) {
+    form.append('worksheet', worksheet.trim());
+  }
+
+  if (mappingProfileId) {
+    form.append('mappingProfileId', mappingProfileId);
+  }
+
+  const response = await fetch(apiUrl('/api/imports'), {
+    method: 'POST',
+    body: form,
+  });
+
   return parseResponse<ImportDetails>(response);
 }
 
 export async function getProfiles(): Promise<MappingProfile[]> {
-  const response = await fetch('/api/mapping-profiles');
+  const response = await fetch(apiUrl('/api/mapping-profiles'));
   return parseResponse<MappingProfile[]>(response);
 }
 
@@ -109,36 +137,58 @@ export async function saveMapping(
   mappings: { sourceColumn: string; targetField: TargetField }[],
   saveProfileName: string | null,
 ): Promise<ImportDetails> {
-  const response = await fetch(`/api/imports/${importId}/mapping`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mappings, saveProfileName }),
-  });
+  const response = await fetch(
+    apiUrl(`/api/imports/${importId}/mapping`),
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mappings, saveProfileName }),
+    },
+  );
+
   return parseResponse<ImportDetails>(response);
 }
 
-export async function confirmImport(importId: string): Promise<{ importedRecords: number; status: string; message: string }> {
-  const response = await fetch(`/api/imports/${importId}/confirm`, { method: 'POST' });
+export async function confirmImport(
+  importId: string,
+): Promise<{ importedRecords: number; status: string; message: string }> {
+  const response = await fetch(
+    apiUrl(`/api/imports/${importId}/confirm`),
+    { method: 'POST' },
+  );
+
   return parseResponse(response);
 }
 
-export async function getRecords(importId: string, page = 1, pageSize = 50): Promise<PagedResult<MedicationRecord>> {
-  const response = await fetch(`/api/imports/${importId}/records?page=${page}&pageSize=${pageSize}`);
+export async function getRecords(
+  importId: string,
+  page = 1,
+  pageSize = 50,
+): Promise<PagedResult<MedicationRecord>> {
+  const response = await fetch(
+    apiUrl(`/api/imports/${importId}/records?page=${page}&pageSize=${pageSize}`),
+  );
+
   return parseResponse<PagedResult<MedicationRecord>>(response);
 }
 
 export async function getImport(importId: string): Promise<ImportDetails> {
-  const response = await fetch(`/api/imports/${importId}`);
+  const response = await fetch(apiUrl(`/api/imports/${importId}`));
   return parseResponse<ImportDetails>(response);
 }
 
 export async function getImports(): Promise<ImportListItem[]> {
-  const response = await fetch('/api/imports');
+  const response = await fetch(apiUrl('/api/imports'));
   return parseResponse<ImportListItem[]>(response);
 }
 
-export function exportUrl(importId: string, format: 'csv' | 'xlsx'): string {
-  return `/api/imports/${importId}/export?format=${format}`;
+export function exportUrl(
+  importId: string,
+  format: 'csv' | 'xlsx',
+): string {
+  return apiUrl(
+    `/api/imports/${importId}/export?format=${format}`,
+  );
 }
 
 export interface MedicationAuditRun {
@@ -191,19 +241,35 @@ export interface MedicationAuditFinding {
   checkedUtc: string;
 }
 
-export async function startMedicationAudit(importId: string): Promise<{ audit: MedicationAuditRun; message: string }> {
-  const response = await fetch(`/api/imports/${importId}/audits`, { method: 'POST' });
+export async function startMedicationAudit(
+  importId: string,
+): Promise<{ audit: MedicationAuditRun; message: string }> {
+  const response = await fetch(
+    apiUrl(`/api/imports/${importId}/audits`),
+    { method: 'POST' },
+  );
+
   return parseResponse(response);
 }
 
-export async function getMedicationAudit(auditId: string): Promise<MedicationAuditRun> {
-  const response = await fetch(`/api/audits/${auditId}`);
+export async function getMedicationAudit(
+  auditId: string,
+): Promise<MedicationAuditRun> {
+  const response = await fetch(apiUrl(`/api/audits/${auditId}`));
   return parseResponse<MedicationAuditRun>(response);
 }
 
-export async function getLatestMedicationAudit(importId: string): Promise<MedicationAuditRun | null> {
-  const response = await fetch(`/api/imports/${importId}/audits/latest`);
-  if (response.status === 204) return null;
+export async function getLatestMedicationAudit(
+  importId: string,
+): Promise<MedicationAuditRun | null> {
+  const response = await fetch(
+    apiUrl(`/api/imports/${importId}/audits/latest`),
+  );
+
+  if (response.status === 204) {
+    return null;
+  }
+
   return parseResponse<MedicationAuditRun>(response);
 }
 
@@ -214,13 +280,31 @@ export async function getMedicationAuditFindings(
   status = '',
   identifierType = '',
 ): Promise<PagedResult<MedicationAuditFinding>> {
-  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-  if (status) query.set('status', status);
-  if (identifierType) query.set('identifierType', identifierType);
-  const response = await fetch(`/api/audits/${auditId}/findings?${query.toString()}`);
+  const query = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+
+  if (status) {
+    query.set('status', status);
+  }
+
+  if (identifierType) {
+    query.set('identifierType', identifierType);
+  }
+
+  const response = await fetch(
+    apiUrl(`/api/audits/${auditId}/findings?${query.toString()}`),
+  );
+
   return parseResponse<PagedResult<MedicationAuditFinding>>(response);
 }
 
-export function medicationAuditExportUrl(auditId: string, format: 'csv' | 'xlsx'): string {
-  return `/api/audits/${auditId}/export?format=${format}`;
+export function medicationAuditExportUrl(
+  auditId: string,
+  format: 'csv' | 'xlsx',
+): string {
+  return apiUrl(
+    `/api/audits/${auditId}/export?format=${format}`,
+  );
 }
