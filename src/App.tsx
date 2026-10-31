@@ -71,7 +71,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!auditRun || !['Queued', 'Running'].includes(auditRun.status)) return;
+    if (!auditRun || !['Queued', 'Running', 'Pausing', 'Cancelling'].includes(auditRun.status)) return;
     let cancelled = false;
     let requestInFlight = false;
 
@@ -85,7 +85,7 @@ function App() {
 
         // The backend writes findings in small batches. Fetch the newest page
         // while processing, then return to source-row order once completed.
-        const showLatest = ['Queued', 'Running'].includes(updated.status);
+        const showLatest = ['Queued', 'Running', 'Pausing', 'Cancelling'].includes(updated.status);
         const result = await getMedicationAuditFindings(
           updated.id,
           1,
@@ -133,7 +133,7 @@ function App() {
         50,
         '',
         '',
-        ['Queued', 'Running'].includes(latest.status),
+        ['Queued', 'Running', 'Pausing', 'Cancelling'].includes(latest.status),
       );
       setAuditFindings(result.items);
       setAuditFindingCount(result.totalCount);
@@ -301,7 +301,7 @@ function App() {
           ? await resumeMedicationAudit(auditRun.id)
           : await cancelMedicationAudit(auditRun.id);
 
-      const showLatest = ['Queued', 'Running'].includes(updated.status);
+      const showLatest = ['Queued', 'Running', 'Pausing', 'Cancelling'].includes(updated.status);
       const result = await getMedicationAuditFindings(
         updated.id,
         1,
@@ -699,6 +699,10 @@ function App() {
                           Cancel
                         </button>
                       </>}
+                      {auditRun?.status === 'Pausing' && <>
+                        <button className="button button-secondary" disabled>Pausing…</button>
+                        <button className="button button-danger" onClick={() => void handleAuditControl('cancel')} disabled={loading}>Cancel</button>
+                      </>}
                       {auditRun?.status === 'Paused' && <>
                         <button className="button button-primary" onClick={() => void handleAuditControl('resume')} disabled={loading}>
                           {loading ? 'Resuming…' : '▶ Resume audit'}
@@ -707,10 +711,11 @@ function App() {
                           Cancel
                         </button>
                       </>}
+                      {auditRun?.status === 'Cancelling' && <button className="button button-secondary" disabled>Cancelling…</button>}
                       <button
                         className="button button-primary"
                         onClick={() => void handleStartAudit()}
-                        disabled={loading || ['Queued', 'Running', 'Paused'].includes(auditRun?.status ?? '')}
+                        disabled={loading || ['Queued', 'Running', 'Pausing', 'Paused', 'Cancelling'].includes(auditRun?.status ?? '')}
                       >
                         {loading ? <><span className="spinner"></span> Working…</> : auditRun ? 'Run new audit' : 'Run terminology audit'}
                       </button>
@@ -724,9 +729,15 @@ function App() {
                       <span>{auditRun.totalIdentifiers.toLocaleString()} unique identifiers / missing-ID checks</span>
                       {auditRun.rxNormVersion && <span>RxNorm release {auditRun.rxNormVersion}</span>}
                     </div>
-                    {['Queued', 'Running', 'Paused', 'Cancelled'].includes(auditRun.status) && <div className={`audit-progress-wrap ${auditRun.status === 'Paused' ? 'audit-progress-paused' : ''}`}>
+                    {['Queued', 'Running', 'Pausing', 'Paused', 'Cancelling', 'Cancelled'].includes(auditRun.status) && <div className={`audit-progress-wrap ${auditRun.status === 'Paused' ? 'audit-progress-paused' : ''}`}>
                       <div className="audit-progress-label">
-                        <span>{auditRun.status === 'Paused' ? 'Audit paused' : auditRun.status === 'Cancelled' ? 'Audit cancelled · partial results retained' : 'Checking terminology identifiers'}</span>
+                        <span>
+                          {auditRun.status === 'Pausing' ? 'Pausing after the current batch…'
+                            : auditRun.status === 'Paused' ? 'Audit paused'
+                              : auditRun.status === 'Cancelling' ? 'Saving current batch before cancellation…'
+                                : auditRun.status === 'Cancelled' ? 'Audit cancelled · partial results retained'
+                                  : 'Checking terminology identifiers'}
+                        </span>
                         <strong>{auditRun.progressPercent}%</strong>
                       </div>
                       <div className="audit-progress"><span style={{ width: `${auditRun.progressPercent}%` }}></span></div>
@@ -743,13 +754,13 @@ function App() {
                       <div className="audit-summary unknown"><strong>{auditRun.unknownCount + auditRun.alienCount}</strong><span>Unknown / Alien</span></div>
                       <div className="audit-summary error"><strong>{auditRun.invalidFormatCount + auditRun.missingIdentifierCount + auditRun.lookupErrorCount}</strong><span>Needs attention</span></div>
                     </div>}
-                    {['Running', 'Completed', 'Failed', 'Paused', 'Cancelled'].includes(auditRun.status) && <>
+                    {['Running', 'Pausing', 'Cancelling', 'Completed', 'Failed', 'Paused', 'Cancelled'].includes(auditRun.status) && <>
                       <div className="audit-findings-heading">
                         <div>
-                          <h3>{auditRun.status === 'Running' ? 'Live audit findings' : 'Audit findings'}</h3>
+                          <h3>{['Running', 'Pausing', 'Cancelling'].includes(auditRun.status) ? 'Live audit findings' : 'Audit findings'}</h3>
                           <p>
                             {auditFindingCount.toLocaleString()} identifier findings
-                            {auditRun.status === 'Running'
+                            {['Running', 'Pausing', 'Cancelling'].includes(auditRun.status)
                               ? ' · Latest results refresh automatically while the audit runs'
                               : ' · Active means terminology status only'}
                           </p>
@@ -781,9 +792,9 @@ function App() {
                             <td className="finding-detail">{finding.detail || '—'}</td>
                           </tr>)}</tbody>
                         </table>
-                        {auditFindings.length === 0 && <div className="no-records">{auditRun.status === 'Running' ? 'Waiting for the first completed identifier checks. This table will populate automatically.' : auditRun.status === 'Paused' ? 'No findings have been saved yet. Resume the audit to continue.' : auditRun.status === 'Cancelled' ? 'No findings were completed before this audit was cancelled.' : 'No findings match the selected filters.'}</div>}
+                        {auditFindings.length === 0 && <div className="no-records">{['Running', 'Pausing', 'Cancelling'].includes(auditRun.status) ? 'Waiting for the first completed identifier checks. This table will populate automatically.' : auditRun.status === 'Paused' ? 'No findings have been saved yet. Resume the audit to continue.' : auditRun.status === 'Cancelled' ? 'No findings were completed before this audit was cancelled.' : 'No findings match the selected filters.'}</div>}
                       </div>
-                      {auditRun.status === 'Running'
+                      {['Running', 'Pausing', 'Cancelling'].includes(auditRun.status)
                         ? <div className="live-findings-note"><span className="live-dot"></span> Showing the latest 50 findings · Auto-refreshing every 1.2 seconds</div>
                         : <div className="pagination-row"><span>Audit page {auditPage} · {auditFindingCount.toLocaleString()} findings</span><div><button className="button button-secondary button-small" disabled={auditPage <= 1 || loading} onClick={() => void loadAuditFindingPage(auditPage - 1)}>Previous</button><button className="button button-secondary button-small" disabled={auditPage * 50 >= auditFindingCount || loading} onClick={() => void loadAuditFindingPage(auditPage + 1)}>Next</button></div></div>}
                     </>}
