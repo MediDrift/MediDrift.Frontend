@@ -77,6 +77,8 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 .button-secondary { color: #51617a; background: #fff; border-color: #dce3ed; }
 .button-secondary:hover:not(:disabled) { background: #f7f9fc; border-color: #c4cfdf; }
 .button-small { padding: 8px 12px; font-size: 10px; }
+.button-danger { color: #a74448; background: #fff3f2; border-color: #f1d5d5; }
+.button-danger:hover:not(:disabled) { background: #ffe9e7; border-color: #e8bdbd; }
 .button span { font-size: 15px; line-height: 10px; }
 .text-button { color: #4167c4; border: 0; background: none; font-size: 10px; font-weight: 700; }
 .text-button:hover { text-decoration: underline; }
@@ -272,6 +274,7 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 /* Medication terminology audit */
 .audit-card { border: 1px solid #e6ebf3; border-radius: 10px; padding: 18px; margin: 8px 0 24px; background: #fff; }
 .audit-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
+.audit-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .audit-card-heading h2 { margin: 4px 0 5px; color: #2d3d58; font: 800 16px Manrope, sans-serif; }
 .audit-card-heading p { max-width: 700px; margin: 0; color: #8793a6; font-size: 10px; line-height: 1.6; }
 .audit-eyebrow { color: #5572bf; font-size: 8px; letter-spacing: 1px; font-weight: 800; }
@@ -284,13 +287,19 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 .audit-status { padding: 5px 8px; border-radius: 5px; font-size: 8px; text-transform: uppercase; letter-spacing: .4px; font-weight: 800; }
 .status-queued { background: #eef2ff; color: #5570bc; }
 .status-running { background: #eaf3ff; color: #336bc0; }
+.status-pausing { background: #fff6e8; color: #a77729; }
+.status-cancelling { background: #fff0ef; color: #bd5550; }
 .status-completed { background: #e8f7f0; color: #268366; }
 .status-failed { background: #fff0ef; color: #bd5550; }
+.status-paused { background: #fff6e8; color: #a77729; }
+.status-cancelled { background: #f0f2f6; color: #68758a; }
 .audit-progress-wrap { padding: 13px; border: 1px solid #e8edf4; border-radius: 8px; background: #fafbfd; }
 .audit-progress-label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: #62718a; font-size: 9px; }
 .audit-progress-label strong { color: #365fc0; }
 .audit-progress { height: 7px; overflow: hidden; border-radius: 99px; background: #e8edf5; }
 .audit-progress > span { display: block; height: 100%; border-radius: inherit; background: #4168c9; transition: width .25s ease; }
+.audit-progress-paused { background: #fffbf2; border-color: #f1e3c7; }
+.audit-progress-paused .audit-progress > span { background: #bd8730; }
 .audit-progress-wrap > small { display: block; margin-top: 8px; color: #929eb0; font-size: 8px; }
 .live-findings-note { display: flex; align-items: center; gap: 8px; padding: 10px 2px 0; color: #75849b; font-size: 9px; }
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #2da782; box-shadow: 0 0 0 3px #2da78220; animation: live-pulse 1.6s ease-in-out infinite; }
@@ -326,7 +335,8 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 @media (max-width: 600px) {
   .audit-card { padding: 13px; }
   .audit-card-heading, .audit-findings-heading { align-items: stretch; flex-direction: column; }
-  .audit-card-heading .button { width: 100%; }
+  .audit-actions { width: 100%; flex-direction: column; }
+  .audit-actions .button { width: 100%; }
   .audit-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .audit-filters { flex-direction: column; }
 }
