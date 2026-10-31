@@ -308,3 +308,7 @@ export function medicationAuditExportUrl(
     `/api/audits/${auditId}/export?format=${format}`,
   );
 }
+
+export function originalSourceExportUrl(importId: string): string {
+  return apiUrl(`/api/imports/${importId}/export?format=source-csv`);
+}
