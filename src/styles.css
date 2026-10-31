@@ -200,12 +200,13 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 .success-banner h2 { color: #286f5b; font-size: 14px; margin: 0 0 4px; }
 .success-banner p { color: #77998d; font-size: 9px; margin: 0; }
 .results-panel { padding: 19px; }
-.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0 23px; }
+.stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 15px 0 23px; }
 .stat-card { border: 1px solid #e9edf3; border-radius: 8px; padding: 13px; display: flex; flex-direction: column; gap: 5px; }
 .stat-card > span { color: #97a1b1; font-size: 7px; letter-spacing: .9px; font-weight: 800; }
 .stat-card strong { color: #2f415e; font: 800 22px Manrope, sans-serif; }
 .stat-card strong.status-text { color: #258368; font-size: 16px; padding-top: 3px; }
-.stat-card small { color: #9aa5b5; font-size: 8px; }
+.stat-card small { color: #9aa5b5; font-size: 8px; line-height: 1.45; }
+.source-export-help { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid #eff2f6; color: #8491a4; font-size: 9px; line-height: 1.6; }
 .records-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .export-actions { display: flex; gap: 7px; }
 .records-table th { height: 34px; }
@@ -221,6 +222,7 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 .page-footer b { color: #c0c8d3; margin: 0 4px; }
 
 @media (max-width: 1100px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sidebar { width: 220px; flex-basis: 220px; }
   .page-content { padding-left: 25px; padding-right: 25px; }
   .topbar { padding: 0 25px; }
