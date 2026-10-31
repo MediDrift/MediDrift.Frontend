@@ -259,6 +259,28 @@ export async function getMedicationAudit(
   return parseResponse<MedicationAuditRun>(response);
 }
 
+async function updateMedicationAuditState(
+  auditId: string,
+  action: 'pause' | 'resume' | 'cancel',
+): Promise<MedicationAuditRun> {
+  const response = await fetch(apiUrl(`/api/audits/${auditId}/${action}`), {
+    method: 'POST',
+  });
+  return parseResponse<MedicationAuditRun>(response);
+}
+
+export function pauseMedicationAudit(auditId: string): Promise<MedicationAuditRun> {
+  return updateMedicationAuditState(auditId, 'pause');
+}
+
+export function resumeMedicationAudit(auditId: string): Promise<MedicationAuditRun> {
+  return updateMedicationAuditState(auditId, 'resume');
+}
+
+export function cancelMedicationAudit(auditId: string): Promise<MedicationAuditRun> {
+  return updateMedicationAuditState(auditId, 'cancel');
+}
+
 export async function getLatestMedicationAudit(
   importId: string,
 ): Promise<MedicationAuditRun | null> {
