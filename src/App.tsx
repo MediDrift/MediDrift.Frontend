@@ -10,6 +10,7 @@ import {
   getMedicationAudit,
   getMedicationAuditFindings,
   medicationAuditExportUrl,
+  originalSourceExportUrl,
   startMedicationAudit,
   saveMapping,
   uploadImport,
@@ -346,6 +347,16 @@ function App() {
     link.remove();
   }
 
+  function downloadOriginalSource() {
+    if (!details) return;
+    const link = document.createElement('a');
+    link.href = originalSourceExportUrl(details.id);
+    link.download = `medidrift-${details.id}-original-source.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
   const totalPages = Math.max(1, Math.ceil(recordCount / 50));
 
   return (
@@ -388,7 +399,7 @@ function App() {
         </div>
 
         <div className="sidebar-footer">
-          <div className="secure-indicator"><span></span> Local development workspace</div>
+          <div className="secure-indicator"><span></span> Shared pilot workspace</div>
           <div className="sidebar-footer-note">MVP · v0.1.0</div>
         </div>
       </aside>
@@ -397,7 +408,7 @@ function App() {
         <header className="topbar">
           <div className="breadcrumbs"><span>Workspace</span><b>/</b><strong>{step === 1 ? 'New import' : step === 2 ? 'Column mapping' : 'Import results'}</strong></div>
           <div className="topbar-right">
-            <span className="environment-pill"><i></i> DEVELOPMENT</span>
+            <span className="environment-pill"><i></i> PILOT</span>
             <div className="user-avatar">A</div>
           </div>
         </header>
@@ -475,12 +486,12 @@ function App() {
                   <div className="field-block">
                     <label htmlFor="worksheet">Worksheet name <span className="optional">XLSX ONLY</span></label>
                     <input id="worksheet" value={worksheet} onChange={(event) => setWorksheet(event.target.value)} placeholder="Leave blank to use the first worksheet" />
-                    <small>Enter a worksheet name only when you do not want the first sheet.</small>
+                    <small>Leave blank to import the first worksheet. Only the selected worksheet is imported per job; import other data worksheets separately using their exact names.</small>
                   </div>
                 </div>
 
                 <div className="panel-actions">
-                  <div className="privacy-note"><span>⌑</span> Uploads are stored in your local development database.</div>
+                  <div className="privacy-note"><span>⌑</span> Uploads are stored in the hosted MediDrift database. Use synthetic data during the pilot.</div>
                   <button className="button button-primary" onClick={handleUpload} disabled={!file || loading}>
                     {loading ? <><span className="spinner"></span> Reading file…</> : <>Continue to column mapping <span>→</span></>}
                   </button>
@@ -587,9 +598,10 @@ function App() {
               <section className="panel results-panel">
                 <div className="success-banner"><div className="success-check">✓</div><div><h2>Catalogue imported successfully</h2><p>{details.fileName} has been normalized using your confirmed column mappings.</p></div></div>
                 <div className="stat-grid">
-                  <div className="stat-card"><span>ROWS IMPORTED</span><strong>{recordCount.toLocaleString()}</strong><small>Source rows retained</small></div>
-                  <div className="stat-card"><span>COLUMNS MAPPED</span><strong>{mappedCount}</strong><small>Canonical fields assigned</small></div>
-                  <div className="stat-card"><span>IMPORT STATUS</span><strong className="status-text">Imported</strong><small>Saved to local database</small></div>
+                  <div className="stat-card"><span>ROWS IMPORTED</span><strong>{recordCount.toLocaleString()}</strong><small>All non-empty rows on this worksheet</small></div>
+                  <div className="stat-card"><span>SOURCE COLUMNS RETAINED</span><strong>{details.columns.length}</strong><small>Original headers and values preserved</small></div>
+                  <div className="stat-card"><span>CANONICAL FIELDS MAPPED</span><strong>{mappedCount}</strong><small>Fields used for normalized records</small></div>
+                  <div className="stat-card"><span>IMPORT STATUS</span><strong className="status-text">Imported</strong><small>Saved to hosted database</small></div>
                 </div>
                 <section className="audit-card">
                   <div className="audit-card-heading">
@@ -602,7 +614,7 @@ function App() {
                       {loading ? <><span className="spinner"></span> Working…</> : auditRun ? 'Run new audit' : 'Run terminology audit'}
                     </button>
                   </div>
-                  {!auditRun && <div className="audit-empty"><span>✓</span><div><strong>Catalogue ready for terminology audit</strong><small>Checks RxCUI and NDC terminology status only. This is not a medication safety or clinical-equivalence validation. MVP limit: 1,000 distinct identifiers per audit.</small></div></div>}
+                  {!auditRun && <div className="audit-empty"><span>✓</span><div><strong>Catalogue ready for terminology audit</strong><small>Checks RxCUI and NDC terminology status only. This is not a medication safety or clinical-equivalence validation. Large catalogues are processed in controlled batches. Duplicate identifiers share cached terminology lookups.</small></div></div>}
                   {auditRun && <>
                     <div className="audit-run-meta">
                       <span className={`audit-status status-${auditRun.status.toLowerCase()}`}>{auditRun.status}</span>
@@ -654,7 +666,7 @@ function App() {
                   </>}
                 </section>
 
-                <div className="records-heading"><div><h2>Normalized medication records</h2><p>Showing {records.length ? ((page - 1) * 50 + 1).toLocaleString() : 0}–{Math.min(page * 50, recordCount).toLocaleString()} of {recordCount.toLocaleString()} records.</p></div><div className="export-actions"><button className="button button-secondary button-small" onClick={() => download('csv')}>↓ CSV</button><button className="button button-secondary button-small" onClick={() => download('xlsx')}>↓ Excel</button></div></div>
+                <div className="records-heading"><div><h2>Normalized medication records</h2><p>Showing {records.length ? ((page - 1) * 50 + 1).toLocaleString() : 0}–{Math.min(page * 50, recordCount).toLocaleString()} of {recordCount.toLocaleString()} records.</p></div><div className="export-actions"><button className="button button-secondary button-small" onClick={() => download('csv')}>↓ Normalized CSV</button><button className="button button-secondary button-small" onClick={() => download('xlsx')}>↓ Full Excel workbook</button><button className="button button-secondary button-small" onClick={downloadOriginalSource}>↓ Original source CSV</button></div></div>
                 <div className="records-table-wrap">
                   <table className="records-table">
                     <thead><tr><th>ROW</th><th>EXTERNAL ID</th><th>MEDICATION NAME</th><th>RxCUI</th><th>NDC</th><th>STRENGTH</th></tr></thead>
@@ -667,7 +679,7 @@ function App() {
                 <div className="pagination-row"><span>Page {page} of {totalPages}</span><div><button className="button button-secondary button-small" disabled={page <= 1 || loading} onClick={() => void loadRecordPage(page - 1)}>Previous</button><button className="button button-secondary button-small" disabled={page >= totalPages || loading} onClick={() => void loadRecordPage(page + 1)}>Next</button></div></div>
               </section>
               <aside className="side-information results-side">
-                <div className="info-card"><h3>What was preserved?</h3><div className="preserved-line"><span>✓</span> Original column headers</div><div className="preserved-line"><span>✓</span> Original source values</div><div className="preserved-line"><span>✓</span> Source row numbers</div><div className="preserved-line"><span>✓</span> Confirmed mapping configuration</div></div>
+                <div className="info-card"><h3>What was preserved?</h3><div className="preserved-line"><span>✓</span> Original column headers</div><div className="preserved-line"><span>✓</span> Original source values</div><div className="preserved-line"><span>✓</span> Source row numbers</div><div className="preserved-line"><span>✓</span> Confirmed mapping configuration</div><p className="source-export-help">Full Excel workbook includes both normalized records and every original source column. Original source CSV exports the selected worksheet's raw values.</p></div>
                 <div className="safety-note"><span>ⓘ</span><p>Terminology status is not a clinical safety assessment. Active status does not prove the product, strength, dosage form or NDC is correct for a patient.</p></div>
               </aside>
             </div>
