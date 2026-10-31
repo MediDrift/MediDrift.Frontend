@@ -292,6 +292,9 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 .audit-progress { height: 7px; overflow: hidden; border-radius: 99px; background: #e8edf5; }
 .audit-progress > span { display: block; height: 100%; border-radius: inherit; background: #4168c9; transition: width .25s ease; }
 .audit-progress-wrap > small { display: block; margin-top: 8px; color: #929eb0; font-size: 8px; }
+.live-findings-note { display: flex; align-items: center; gap: 8px; padding: 10px 2px 0; color: #75849b; font-size: 9px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #2da782; box-shadow: 0 0 0 3px #2da78220; animation: live-pulse 1.6s ease-in-out infinite; }
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 .audit-error { padding: 11px 13px; color: #a74c48; background: #fff4f2; border: 1px solid #f4d8d5; border-radius: 7px; font-size: 10px; }
 .audit-summary-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 14px 0 20px; }
 .audit-summary { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 11px; border: 1px solid #e9edf3; border-radius: 7px; background: #fff; }

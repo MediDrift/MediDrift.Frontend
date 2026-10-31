@@ -279,11 +279,13 @@ export async function getMedicationAuditFindings(
   pageSize = 50,
   status = '',
   identifierType = '',
+  latest = false,
 ): Promise<PagedResult<MedicationAuditFinding>> {
   const query = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
   });
+  if (latest) query.set('latest', 'true');
 
   if (status) {
     query.set('status', status);

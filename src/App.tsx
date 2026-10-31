@@ -71,36 +71,49 @@ function App() {
     if (!auditRun || !['Queued', 'Running'].includes(auditRun.status)) return;
     let cancelled = false;
     let requestInFlight = false;
-    const timer = window.setInterval(async () => {
+
+    const refreshAudit = async () => {
       if (requestInFlight) return;
       requestInFlight = true;
+
       try {
         const updated = await getMedicationAudit(auditRun.id);
         if (cancelled) return;
-        if (updated.status === 'Completed') {
-          // Load the first findings page before changing status. This avoids the
-          // effect cleanup cancelling the findings request on the status transition.
-          const result = await getMedicationAuditFindings(updated.id, 1, 50, auditStatusFilter, auditTypeFilter);
-          if (!cancelled) {
-            setAuditFindings(result.items);
-            setAuditFindingCount(result.totalCount);
-            setAuditPage(1);
-            setAuditRun(updated);
-          }
-        } else {
-          setAuditRun(updated);
-        }
+
+        // The backend writes findings in small batches. Fetch the newest page
+        // while processing, then return to source-row order once completed.
+        const showLatest = updated.status !== 'Completed';
+        const result = await getMedicationAuditFindings(
+          updated.id,
+          1,
+          50,
+          auditStatusFilter,
+          auditTypeFilter,
+          showLatest,
+        );
+
+        if (cancelled) return;
+        setAuditFindings(result.items);
+        setAuditFindingCount(result.totalCount);
+        setAuditPage(1);
+        setAuditRun(updated);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not refresh audit progress.');
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Could not refresh audit progress.');
+        }
       } finally {
         requestInFlight = false;
       }
-    }, 1200);
+    };
+
+    void refreshAudit();
+    const timer = window.setInterval(() => void refreshAudit(), 1200);
+
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [auditRun?.id, auditRun?.status]);
+  }, [auditRun?.id, auditRun?.status, auditStatusFilter, auditTypeFilter]);
 
   async function loadLatestAudit(importId: string) {
     const latest = await getLatestMedicationAudit(importId);
@@ -261,7 +274,14 @@ function App() {
     if (!auditRun) return;
     setLoading(true);
     try {
-      const result = await getMedicationAuditFindings(auditRun.id, nextPage, 50, nextStatus, nextType);
+      const result = await getMedicationAuditFindings(
+        auditRun.id,
+        nextPage,
+        50,
+        nextStatus,
+        nextType,
+        auditRun.status !== 'Completed',
+      );
       setAuditFindings(result.items);
       setAuditFindingCount(result.totalCount);
       setAuditPage(result.page);
@@ -624,18 +644,29 @@ function App() {
                     </div>
                     {['Queued', 'Running'].includes(auditRun.status) && <div className="audit-progress-wrap"><div className="audit-progress-label"><span>Checking terminology identifiers</span><strong>{auditRun.progressPercent}%</strong></div><div className="audit-progress"><span style={{ width: `${auditRun.progressPercent}%` }}></span></div><small>{auditRun.processedIdentifiers.toLocaleString()} of {auditRun.totalIdentifiers.toLocaleString()} checks processed. Duplicate identifiers use one cached lookup.</small></div>}
                     {auditRun.status === 'Failed' && <div className="audit-error">{auditRun.errorMessage || 'The audit failed. Review backend logs and retry.'}</div>}
-                    {auditRun.status === 'Completed' && <>
-                      <div className="audit-summary-grid">
-                        <div className="audit-summary active"><strong>{auditRun.activeCount}</strong><span>Active</span></div>
-                        <div className="audit-summary obsolete"><strong>{auditRun.obsoleteCount}</strong><span>Obsolete</span></div>
-                        <div className="audit-summary remapped"><strong>{auditRun.remappedCount}</strong><span>Remapped</span></div>
-                        <div className="audit-summary review"><strong>{auditRun.quantifiedCount + auditRun.notCurrentCount}</strong><span>Other non-current</span></div>
-                        <div className="audit-summary unknown"><strong>{auditRun.unknownCount + auditRun.alienCount}</strong><span>Unknown / Alien</span></div>
-                        <div className="audit-summary error"><strong>{auditRun.invalidFormatCount + auditRun.missingIdentifierCount + auditRun.lookupErrorCount}</strong><span>Needs attention</span></div>
-                      </div>
+                    {auditRun.status === 'Completed' && <div className="audit-summary-grid">
+                      <div className="audit-summary active"><strong>{auditRun.activeCount}</strong><span>Active</span></div>
+                      <div className="audit-summary obsolete"><strong>{auditRun.obsoleteCount}</strong><span>Obsolete</span></div>
+                      <div className="audit-summary remapped"><strong>{auditRun.remappedCount}</strong><span>Remapped</span></div>
+                      <div className="audit-summary review"><strong>{auditRun.quantifiedCount + auditRun.notCurrentCount}</strong><span>Other non-current</span></div>
+                      <div className="audit-summary unknown"><strong>{auditRun.unknownCount + auditRun.alienCount}</strong><span>Unknown / Alien</span></div>
+                      <div className="audit-summary error"><strong>{auditRun.invalidFormatCount + auditRun.missingIdentifierCount + auditRun.lookupErrorCount}</strong><span>Needs attention</span></div>
+                    </div>}
+                    {['Running', 'Completed', 'Failed'].includes(auditRun.status) && <>
                       <div className="audit-findings-heading">
-                        <div><h3>Audit findings</h3><p>{auditFindingCount.toLocaleString()} identifier findings · Active means terminology status only</p></div>
-                        <div className="export-actions"><button className="button button-secondary button-small" onClick={() => downloadAudit('csv')}>↓ CSV</button><button className="button button-secondary button-small" onClick={() => downloadAudit('xlsx')}>↓ Excel</button></div>
+                        <div>
+                          <h3>{auditRun.status === 'Running' ? 'Live audit findings' : 'Audit findings'}</h3>
+                          <p>
+                            {auditFindingCount.toLocaleString()} identifier findings
+                            {auditRun.status === 'Running'
+                              ? ' · Latest results refresh automatically while the audit runs'
+                              : ' · Active means terminology status only'}
+                          </p>
+                        </div>
+                        {auditRun.status !== 'Running' && <div className="export-actions">
+                          <button className="button button-secondary button-small" onClick={() => downloadAudit('csv')}>↓ CSV</button>
+                          <button className="button button-secondary button-small" onClick={() => downloadAudit('xlsx')}>↓ Excel</button>
+                        </div>}
                       </div>
                       <div className="audit-filters">
                         <select value={auditStatusFilter} onChange={(event) => void loadAuditFindingPage(1, event.target.value, auditTypeFilter)} aria-label="Filter by audit status">
@@ -659,9 +690,11 @@ function App() {
                             <td className="finding-detail">{finding.detail || '—'}</td>
                           </tr>)}</tbody>
                         </table>
-                        {auditFindings.length === 0 && <div className="no-records">No findings match the selected filters.</div>}
+                        {auditFindings.length === 0 && <div className="no-records">{auditRun.status === 'Running' ? 'Waiting for the first completed identifier checks. This table will populate automatically.' : 'No findings match the selected filters.'}</div>}
                       </div>
-                      <div className="pagination-row"><span>Audit page {auditPage} · {auditFindingCount.toLocaleString()} findings</span><div><button className="button button-secondary button-small" disabled={auditPage <= 1 || loading} onClick={() => void loadAuditFindingPage(auditPage - 1)}>Previous</button><button className="button button-secondary button-small" disabled={auditPage * 50 >= auditFindingCount || loading} onClick={() => void loadAuditFindingPage(auditPage + 1)}>Next</button></div></div>
+                      {auditRun.status === 'Running'
+                        ? <div className="live-findings-note"><span className="live-dot"></span> Showing the latest 50 findings · Auto-refreshing every 1.2 seconds</div>
+                        : <div className="pagination-row"><span>Audit page {auditPage} · {auditFindingCount.toLocaleString()} findings</span><div><button className="button button-secondary button-small" disabled={auditPage <= 1 || loading} onClick={() => void loadAuditFindingPage(auditPage - 1)}>Previous</button><button className="button button-secondary button-small" disabled={auditPage * 50 >= auditFindingCount || loading} onClick={() => void loadAuditFindingPage(auditPage + 1)}>Next</button></div></div>}
                     </>}
                   </>}
                 </section>
