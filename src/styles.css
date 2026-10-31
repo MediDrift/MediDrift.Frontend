@@ -287,6 +287,8 @@ h1 { color: #1b2a43; font-size: clamp(24px, 2.5vw, 31px); letter-spacing: -1.1px
 .audit-status { padding: 5px 8px; border-radius: 5px; font-size: 8px; text-transform: uppercase; letter-spacing: .4px; font-weight: 800; }
 .status-queued { background: #eef2ff; color: #5570bc; }
 .status-running { background: #eaf3ff; color: #336bc0; }
+.status-pausing { background: #fff6e8; color: #a77729; }
+.status-cancelling { background: #fff0ef; color: #bd5550; }
 .status-completed { background: #e8f7f0; color: #268366; }
 .status-failed { background: #fff0ef; color: #bd5550; }
 .status-paused { background: #fff6e8; color: #a77729; }
