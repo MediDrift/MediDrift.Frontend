@@ -44,6 +44,7 @@ type Step = 1 | 2 | 3;
 function App() {
   const [step, setStep] = useState<Step>(1);
   const [file, setFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const [worksheet, setWorksheet] = useState('');
   const [selectedProfile, setSelectedProfile] = useState('');
   const [profiles, setProfiles] = useState<MappingProfile[]>([]);
@@ -158,18 +159,48 @@ function App() {
 
   function chooseFile(nextFile?: File) {
     if (!nextFile) return;
+
     const lowerName = nextFile.name.toLowerCase();
-    if (!(lowerName.endsWith('.csv') || lowerName.endsWith('.xlsx'))) {
-      setError('Please choose a CSV or XLSX file.');
+    const isCsv = lowerName.endsWith('.csv');
+    const isXlsx = lowerName.endsWith('.xlsx');
+
+    if (!isCsv && !isXlsx) {
+      setFile(null);
+      setError('This file type is not supported. Choose a CSV or XLSX file.');
+      setNotice('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
+
+    if (nextFile.size === 0) {
+      setFile(null);
+      setError('This file is empty. Choose a CSV or XLSX file that contains data.');
+      setNotice('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     if (nextFile.size > 10 * 1024 * 1024) {
-      setError('The file is larger than the 10 MB MVP limit.');
+      setFile(null);
+      setError('This file is larger than the 10 MB limit. Split it into smaller files and try again.');
+      setNotice('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
+
     setError('');
     setNotice('');
+    setDragActive(false);
     setFile(nextFile);
+    if (isCsv) setWorksheet('');
+  }
+
+  function clearSelectedFile() {
+    setFile(null);
+    setError('');
+    setNotice('');
+    setDragActive(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   async function handleUpload() {
@@ -580,35 +611,82 @@ function App() {
                 <div className="panel-heading">
                   <div>
                     <h2>Upload source file</h2>
-                    <p>Accepted formats: CSV and XLSX · Maximum file size: 10 MB</p>
+                    <p id="upload-help">CSV or XLSX · Up to 10 MB · 25,000 data rows · 100 columns</p>
                   </div>
                   <span className="step-number">01</span>
                 </div>
 
                 <div
-                  className={`drop-zone ${file ? 'has-file' : ''}`}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => { event.preventDefault(); chooseFile(event.dataTransfer.files[0]); }}
-                  onClick={() => fileInputRef.current?.click()}
+                  className={`drop-zone ${file ? 'has-file' : ''} ${dragActive ? 'drag-active' : ''} ${loading ? 'is-disabled' : ''}`}
+                  onDragEnter={(event) => { event.preventDefault(); if (!loading) setDragActive(true); }}
+                  onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }}
+                  onDragLeave={(event) => {
+                    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                    setDragActive(false);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDragActive(false);
+                    if (!loading) chooseFile(event.dataTransfer.files[0]);
+                  }}
+                  onClick={() => { if (!loading) fileInputRef.current?.click(); }}
                   role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') fileInputRef.current?.click(); }}
+                  aria-label={file ? 'Replace selected source file' : 'Choose a CSV or XLSX source file'}
+                  aria-describedby="upload-help"
+                  aria-disabled={loading}
+                  tabIndex={loading ? -1 : 0}
+                  onKeyDown={(event) => {
+                    if ((event.key === 'Enter' || event.key === ' ') && !loading) {
+                      event.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
                 >
-                  <input ref={fileInputRef} type="file" accept=".csv,.xlsx" hidden onChange={(event) => chooseFile(event.target.files?.[0])} />
-                  <div className="upload-icon">⇧</div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    hidden
+                    disabled={loading}
+                    onChange={(event) => {
+                      chooseFile(event.target.files?.[0]);
+                      event.currentTarget.value = '';
+                    }}
+                  />
+                  <div className="upload-icon">{dragActive ? '＋' : '⇧'}</div>
                   {file ? (
                     <>
-                      <strong className="selected-file-name">{file.name}</strong>
-                      <span>{formatBytes(file.size)} · Ready to upload</span>
+                      <strong className="selected-file-name">File selected — drop another or <em>browse to replace</em></strong>
+                      <span>{formatBytes(file.size)} · Local file checks passed</span>
                     </>
                   ) : (
                     <>
-                      <strong>Drop your file here, or <em>browse</em></strong>
-                      <span>CSV or Excel workbook (.xlsx)</span>
+                      <strong>{dragActive ? 'Release to add your file' : <>Drop your file here, or <em>browse</em></>}</strong>
+                      <span>Choose a CSV file or an Excel workbook (.xlsx)</span>
                     </>
                   )}
-                  <div className="file-format-row"><span>▤ CSV</span><span>▦ XLSX</span><span>Up to 25,000 rows</span></div>
+                  <div className="file-format-row"><span>▤ CSV</span><span>▦ XLSX</span><span>10 MB max</span><span>25,000 rows · 100 columns max</span></div>
                 </div>
+
+                {file && (
+                  <div className="selected-file-card" aria-live="polite">
+                    <div className="selected-file-check" aria-hidden="true">✓</div>
+                    <div className="selected-file-content">
+                      <div className="selected-file-topline">
+                        <strong>Selected file</strong>
+                        <span className="file-ready-pill">READY TO STAGE</span>
+                      </div>
+                      <p title={file.name}>{file.name}</p>
+                      <div className="selected-file-meta">
+                        <span>{file.name.toLowerCase().endsWith('.xlsx') ? 'Excel workbook' : 'CSV file'}</span>
+                        <span>{formatBytes(file.size)}</span>
+                        <span>Modified {new Date(file.lastModified).toLocaleDateString()}</span>
+                      </div>
+                      <small>After upload, MediDrift will show detected columns and sample values for you to review before confirming the import.</small>
+                    </div>
+                    <button type="button" className="remove-file-button" onClick={clearSelectedFile} disabled={loading} aria-label="Remove selected file">Remove</button>
+                  </div>
+                )}
 
                 <div className="upload-options">
                   <div className="field-block">
@@ -621,15 +699,15 @@ function App() {
                   </div>
                   <div className="field-block">
                     <label htmlFor="worksheet">Worksheet name <span className="optional">XLSX ONLY</span></label>
-                    <input id="worksheet" value={worksheet} onChange={(event) => setWorksheet(event.target.value)} placeholder="Leave blank to use the first worksheet" />
-                    <small>Leave blank to import the first worksheet. Only the selected worksheet is imported per job; import other data worksheets separately using their exact names.</small>
+                    <input id="worksheet" value={worksheet} onChange={(event) => setWorksheet(event.target.value)} placeholder="Leave blank to use the first worksheet" disabled={!!file && !file.name.toLowerCase().endsWith('.xlsx')} />
+                    <small>{file && !file.name.toLowerCase().endsWith('.xlsx') ? 'Worksheet selection is only available for Excel workbooks.' : 'Leave blank to use the first worksheet. Import other worksheets as separate jobs.'}</small>
                   </div>
                 </div>
 
                 <div className="panel-actions">
-                  <div className="privacy-note"><span>⌑</span> Uploads are stored in the hosted MediDrift database. Use synthetic data during the pilot.</div>
+                  <div className="privacy-note"><span>ⓘ</span> Catalogue metadata only. Use synthetic data during the pilot.</div>
                   <button className="button button-primary" onClick={handleUpload} disabled={!file || loading}>
-                    {loading ? <><span className="spinner"></span> Reading file…</> : <>Continue to column mapping <span>→</span></>}
+                    {loading ? <><span className="spinner"></span> Uploading and checking…</> : <>Upload & review columns <span>→</span></>}
                   </button>
                 </div>
               </section>
