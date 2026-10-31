@@ -496,16 +496,72 @@ function App() {
         <div className="page-content">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">MEDICATION DATA QUALITY</div>
-              <h1>{step === 1 ? 'Import your medication catalogue' : step === 2 ? 'Review column mappings' : 'Import completed'}</h1>
+              <div className="eyebrow">{step === 1 ? 'WELCOME TO MEDIDRIFT' : 'MEDICATION DATA QUALITY'}</div>
+              <h1>{step === 1 ? 'Understand your medication catalogue. Keep control of your data.' : step === 2 ? 'Review column mappings' : 'Import completed'}</h1>
               <p>{step === 1
-                ? 'Bring your existing CSV or Excel structure. You do not need to rename your columns.'
+                ? 'MediDrift helps catalogue teams organize medication data, map inconsistent spreadsheets and review identifier quality—without silently changing your source values.'
                 : step === 2
                   ? 'Match your source columns to MediDrift fields before any records are normalized.'
                   : 'Your source data has been normalized and saved. Review the imported records below.'}</p>
             </div>
             {step !== 1 && <button className="button button-secondary" onClick={startNewImport}>＋ New import</button>}
           </div>
+
+          {step === 1 && (
+            <section className="product-intro" aria-labelledby="product-intro-title">
+              <div className="intro-overview">
+                <div className="intro-copy">
+                  <span className="intro-kicker">MEDICATION CATALOGUE WORKSPACE</span>
+                  <h2 id="product-intro-title">From scattered spreadsheets to a reviewable medication catalogue.</h2>
+                  <p>
+                    Different suppliers and systems often use different column names and identifier formats.
+                    MediDrift gives you one place to bring those files together, map their fields and inspect
+                    RxCUI/NDC terminology status.
+                  </p>
+                  <div className="intro-boundary">
+                    <span aria-hidden="true">ⓘ</span>
+                    <p><strong>Designed for catalogue data—not patient records.</strong> MediDrift is a data organization
+                      and terminology review tool. It does not assess clinical suitability, prescribe medicines,
+                      or automatically replace submitted identifiers.</p>
+                  </div>
+                </div>
+                <div className="intro-visual" aria-hidden="true">
+                  <div className="intro-visual-top"><span></span><span></span><span></span><b>CATALOGUE OVERVIEW</b></div>
+                  <div className="intro-visual-row"><i>CSV</i><span><b>Supplier catalogue</b><small>Original columns retained</small></span><em>↘</em></div>
+                  <div className="intro-visual-line"></div>
+                  <div className="intro-visual-row"><i>XLS</i><span><b>Mapped records</b><small>Consistent MediDrift fields</small></span><em>↘</em></div>
+                  <div className="intro-visual-line"></div>
+                  <div className="intro-visual-row"><i className="audit-icon">✓</i><span><b>Terminology review</b><small>Findings for human review</small></span><em className="review-pill">REVIEW</em></div>
+                </div>
+              </div>
+
+              <div className="intro-capabilities">
+                <article className="capability-card">
+                  <span className="capability-icon">↔</span>
+                  <div><h3>Map any spreadsheet</h3><p>Keep your existing headers and map them to a consistent medication data structure.</p></div>
+                </article>
+                <article className="capability-card">
+                  <span className="capability-icon">▤</span>
+                  <div><h3>Preserve the source</h3><p>Retain original values, row references and mapping choices for traceability.</p></div>
+                </article>
+                <article className="capability-card">
+                  <span className="capability-icon">⌕</span>
+                  <div><h3>Review identifier status</h3><p>Check RxCUI and NDC terminology status and inspect findings before taking action.</p></div>
+                </article>
+              </div>
+
+              <div className="intro-workflow">
+                <div className="workflow-heading"><span>YOUR WORKFLOW</span><strong>Three clear steps</strong></div>
+                <div className="workflow-steps">
+                  <div><b>01</b><span><strong>Upload a catalogue</strong><small>Start with a CSV or XLSX file.</small></span></div>
+                  <i>→</i>
+                  <div><b>02</b><span><strong>Confirm column mapping</strong><small>Review suggestions and choose fields.</small></span></div>
+                  <i>→</i>
+                  <div><b>03</b><span><strong>Review and export</strong><small>Inspect records and audit findings.</small></span></div>
+                </div>
+              </div>
+            </section>
+          )}
 
           <div className="stepper-card">
             <StepIndicator number={1} label="Upload file" active={step === 1} complete={step > 1} />
